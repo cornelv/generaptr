@@ -1,6 +1,11 @@
 const mysql = require('mysql');
 
 class MysqlHandler {
+  /**
+   * Constructor for the MySqlHandler.
+   *
+   * @param options Connection parameters.
+   */
   constructor(options) {
     this.options = options;
     this.connection = mysql.createConnection({
@@ -12,15 +17,23 @@ class MysqlHandler {
     });
   }
 
+  /**
+   * Connect to MySql based on the connection data.
+   */
   connect() {
     this.connection.connect();
   }
 
+  /**
+   * Reads the information schema and returns an array of tables.
+   *
+   * @returns {Promise}
+   */
   readTables() {
     return new Promise((resolve, reject) => {
       this.connection.query(
         `SELECT TABLE_NAME FROM TABLES WHERE TABLE_SCHEMA = '${this.options.database}';`,
-        (err, results, fields) => {
+        (err, results) => {
           if (err) {
             return reject(err);
           }
@@ -34,6 +47,12 @@ class MysqlHandler {
     });
   }
 
+  /**
+   * Reads the schema for each table privided.
+   *
+   * @param tables
+   * @returns {Promise.<*>}
+   */
   readSchema(tables) {
     const promises = [];
     for (const key in tables) {
@@ -41,7 +60,7 @@ class MysqlHandler {
         new Promise((resolve, reject) => {
           this.connection.query(
             `SELECT COLUMN_NAME, IS_NULLABLE, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM COLUMNS WHERE TABLE_SCHEMA = '${this.options.database}' AND TABLE_NAME = '${tables[key]}';`,
-            (err, results, fields) => {
+            (err, results) => {
               if (err) {
                 return reject(err);
               }
@@ -67,6 +86,9 @@ class MysqlHandler {
     return Promise.all(promises);
   }
 
+  /**
+   * Closes the MySql connection.
+   */
   close() {
     this.connection.end();
   }
