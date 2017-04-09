@@ -20,7 +20,7 @@ before_install:
   - mysql -u root test < ./test/tracks/mysql/data.sql
 
 script:
-  - npm run test:coverages
+  - npm run test:coverage
 
 after_success:
   - npm run coveralls
