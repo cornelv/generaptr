@@ -2,6 +2,7 @@ import * as inquirer from 'inquirer';
 import * as chalk from 'chalk';
 import logger from '../../../../commons/logger';
 import * as mysql from './mysql';
+import * as postgresql from './postgresql'
 import { Schema } from '../../../../commons/types';
 export const questions: inquirer.Questions = [
   {
@@ -18,6 +19,9 @@ async (data: {databaseEngine: string}): Promise<Schema> => {
   switch (data.databaseEngine) {
     case 'MySql': {
       return inquirer.prompt(mysql.questions).then(mysql.handler);
+    }
+    case 'Postgresql': {
+      return inquirer.prompt(postgresql.questions).then(postgresql.handler);
     }
     default: {
       logger.warn(`${data.databaseEngine} not yet supported.`);

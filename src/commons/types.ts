@@ -26,6 +26,13 @@ export type MySqlColumnSchema = {
   CHARACTER_MAXIMUM_LENGTH?: string;
 };
 
+export type PostgreSqlColumnSchema = {
+  COLUMN_NAME: string;
+  IS_NULLABLE: string;
+  DATA_TYPE: string;
+  CHARACTER_MAXIMUM_LENGTH?: string;
+};
+
 export type RawTableReference = {
   COLUMN_NAME: string;
   REFERENCED_TABLE_NAME: string;
