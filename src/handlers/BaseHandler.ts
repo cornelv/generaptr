@@ -1,6 +1,7 @@
 import MysqlSchemaPreprocessor from '../preprocesors/MysqlSchemaPreprocessor';
+import PostgresqlSchemaPreprocessor from '../preprocesors/PostgresqlSchemaPreprocessor';
 import RamlSchemaPreprocessor from '../preprocesors/RamlSchemaPreprocessor';
-import { RamlColumnSchema, MySqlColumnSchema, Column, Schema } from '../commons/types';
+import { RamlColumnSchema, MySqlColumnSchema, PostgreSqlColumnSchema, Column, Schema } from '../commons/types';
 
 /**
  * Base Handler.
@@ -29,10 +30,14 @@ export default class BaseHandler {
    * @param {*} columnSchema sql column schema
    * @returns {*} normalized column schema
    */
-  public normalizeColumnSchema(columnSchema: RamlColumnSchema | MySqlColumnSchema): Column {
+  public normalizeColumnSchema(columnSchema: RamlColumnSchema | MySqlColumnSchema | PostgreSqlColumnSchema): Column {
+    
     switch (this.driver) {
       case 'mysql': {
         return (new MysqlSchemaPreprocessor()).convertToStandardSchema(columnSchema as MySqlColumnSchema);
+      }
+      case 'postgresql': {
+        return (new PostgresqlSchemaPreprocessor()).convertToStandardSchema(columnSchema as PostgreSqlColumnSchema);
       }
       case 'raml': {
         return (new RamlSchemaPreprocessor()).convertToStandardSchema(columnSchema as RamlColumnSchema);
@@ -53,6 +58,9 @@ export default class BaseHandler {
     switch (this.driver) {
       case 'mysql': {
         return (new MysqlSchemaPreprocessor()).normalizeSchemaRelations(schema);
+      }
+      case 'postgresql': {
+        return (new PostgresqlSchemaPreprocessor()).normalizeSchemaRelations(schema);
       }
       case 'raml': {
         return (new RamlSchemaPreprocessor()).normalizeSchemaRelations(schema);

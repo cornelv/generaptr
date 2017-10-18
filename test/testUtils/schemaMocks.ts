@@ -780,4 +780,12 @@ export default {
     COLUMN_KEY: '',
     COLUMN_TYPE: "enum('No', 'Yes')",
   },
+  POSTGRESQL_RAW_ENUM_DATA: {
+    column_name: 'enum_fld',
+    is_nullable: 'YES',
+    data_type: 'enum',
+    character_maximum_length: '3',
+    column_key: '',
+    column_type: "enum('No', 'Yes')",
+  },
 };

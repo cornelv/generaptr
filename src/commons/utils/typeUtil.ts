@@ -14,7 +14,7 @@ export class TypeUtil {
    * @type {string[]}
    * @memberof TypeUtil
    */
-  private numberTypes: string[] = ['int', 'tinyint', 'smallint', 'mediumint', 'bigint', 'decimal', 'float', 'double'];
+  private numberTypes: string[] = ['int', 'tinyint', 'smallint', 'mediumint', 'bigint', 'decimal', 'float', 'double', 'integer', 'numeric', 'double precision'];
 
   /**
    * Array that holds the string types
@@ -24,7 +24,7 @@ export class TypeUtil {
    * @memberof TypeUtil
    */
   private stringTypes: string[] = [
-    'char', 'varchar', 'blob', 'text', 'tinyblob', 'tinytext', 'mediumblob', 'mediumtext', 'longblob', 'longtext',
+    'char', 'varchar', 'blob', 'text', 'tinyblob', 'tinytext', 'mediumblob', 'mediumtext', 'longblob', 'longtext', 'character varying',
   ];
 
   /**
@@ -35,6 +35,8 @@ export class TypeUtil {
   public convertSqlType(type: string): string {
     if (utils.indexOfIgnoreCase(this.numberTypes, type.toLowerCase()) > -1 ||
       (type.toLowerCase() === 'timestamp') ||
+      (type.toLowerCase() === 'timestamp with time zone') ||
+      (type.toLowerCase() === 'interval') ||
       (type.toLowerCase() === 'year')) {
       return 'number';
     } else if (utils.indexOfIgnoreCase(this.stringTypes, type.toLowerCase()) > -1) {
@@ -47,7 +49,14 @@ export class TypeUtil {
       return 'time-only';
     } else if (type.toLowerCase() === 'enum') {
       return 'enum';
+    }else if (type.toLowerCase() === 'boolean') {
+      return 'boolean';
     }
+
+    
+
+    console.log("Type not found: ", type);
+
     throw new Error('Type not found');
   }
 

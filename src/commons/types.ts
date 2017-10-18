@@ -28,16 +28,24 @@ export type MySqlColumnSchema = {
 };
 
 export type PostgreSqlColumnSchema = {
-  COLUMN_NAME: string;
-  IS_NULLABLE: string;
-  DATA_TYPE: string;
-  CHARACTER_MAXIMUM_LENGTH?: string;
+  column_name: string;
+  column_key: string;
+  column_type: string;
+  is_nullable: string;
+  data_type: string;
+  character_maximum_length?: string;
 };
 
 export type RawTableReference = {
   COLUMN_NAME: string;
   REFERENCED_TABLE_NAME: string;
   REFERENCED_COLUMN_NAME: string;
+};
+
+export type PostgresqlRawTableReference = {
+  column_name: string;
+  referenced_table_name: string;
+  referenced_column_name: string;
 };
 
 export type TableReference = {

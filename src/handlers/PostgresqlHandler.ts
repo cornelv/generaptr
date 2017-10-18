@@ -1,7 +1,7 @@
 import { Client } from 'pg';
 import Utils from '../commons/utils/utils';
 import BaseHandler from './BaseHandler';
-import { Schema, Table, Column, PostgreSqlColumnSchema, TableReference, RawTableReference } from '../commons/types';
+import { Schema, Table, Column, PostgreSqlColumnSchema, TableReference, PostgresqlRawTableReference } from '../commons/types';
 
 /**
  * Postgresql Handler.
@@ -34,7 +34,7 @@ export default class PostgresqlHandler extends BaseHandler {
    * @param {Client.IConnectionParameters} options Connection parameters.
    */
   public constructor(options: Client.IConnectionParameters) {
-    super('mysql'); //TODO: change here
+    super('postgresql');
 
     this.options = options;
 
@@ -64,7 +64,6 @@ export default class PostgresqlHandler extends BaseHandler {
     return new Promise<Schema>((resolve: (schema: Schema) => void, reject: (reason: Error) => void): void => {
       this.getTables().then((tablesNames: string[]) => {
         const tables: Promise<Table>[] = tablesNames.map(async (tableName: string) => this.getTableSchema(tableName));
-
         Promise.all(tables).then((schema: Schema) => {
           resolve(this.normalizeRelations(schema));
         }).catch(reject);
@@ -81,13 +80,13 @@ export default class PostgresqlHandler extends BaseHandler {
     return new Promise<string[]>((resolve: (tables: string[]) => void, reject: (reason: Error) => void): void => {
       this.connection.query(
         `SELECT TABLE_NAME FROM information_schema.tables WHERE table_schema = 'public' and table_name <> 'pg_stat_statements';`,
-        (err: Error, results: [{TABLE_NAME: string}]) => {
+        (err: Error, results: {rows: [{table_name: string}] }) => {
           /* istanbul ignore next */
           if (err) {
             return reject(err);
           }
 
-          const tables: string[] = results.rows.map((result: {TABLE_NAME: string}) => result.table_name);
+          const tables: string[] = results.rows.map((result: {table_name: string}) => result.table_name);
 
           return resolve(tables);
         },
@@ -112,22 +111,83 @@ export default class PostgresqlHandler extends BaseHandler {
           COLUMN_KEY,
           COLUMN_TYPE
       */
-
       this.connection.query(
         `SELECT
-          COLUMN_NAME,
-          IS_NULLABLE,
-          DATA_TYPE,
-          CHARACTER_MAXIMUM_LENGTH
-        FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '${tableName}';`,
-        (err: Error, columns: PostgreSqlColumnSchema[]) => {
+          c.COLUMN_NAME,
+          c.IS_NULLABLE,
+          c.DATA_TYPE,
+          c.CHARACTER_MAXIMUM_LENGTH, constraint_type as COLUMN_KEY
+        FROM INFORMATION_SCHEMA.COLUMNS c
+        left join information_schema.key_column_usage kcu on 
+          kcu.table_catalog = c.table_catalog and
+          kcu.table_name = c.table_name and 
+          kcu.column_name = c.column_name    
+        left join information_schema.table_constraints tc on 
+          tc.constraint_catalog = c.table_catalog and
+          tc.table_name = c.table_name and
+          kcu.constraint_name = tc.constraint_name
+        WHERE c.TABLE_NAME = '${tableName}' and c.table_catalog = '${this.options.database}' ;`,
+        (err: Error, columns: {rows: PostgreSqlColumnSchema[]}) => {
+
           /* istanbul ignore next */
           if (err) {
             return reject(err);
           }
 
           this.getRelationsForTable(tableName).then((relations: TableReference[]) => {
+
             columns.rows.forEach((result: PostgreSqlColumnSchema) => {
+
+              if(result.data_type == 'USER-DEFINED') {
+
+
+
+                console.log(tableName);
+                console.log(result);
+                
+                // check if we found an enum column
+
+                // make a query to get the column type from pg_catalog
+
+                /*
+                `
+                SELECT
+                   a.attname as "Column",
+                   pg_catalog.format_type(a.atttypid, a.atttypmod) as "Datatype"
+
+
+                  FROM
+                  pg_catalog.pg_attribute a
+                  WHERE
+                  a.attnum > 0
+                  AND NOT a.attisdropped
+                  AND a.attrelid = (
+                      SELECT c.oid
+                      FROM pg_catalog.pg_class c
+                    LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                      WHERE c.relname = 'test_status' AND a.attname = 'status' and 
+                       pg_catalog.pg_table_is_visible(c.oid)
+                  );
+
+                `
+
+                // make a query to get the enum values
+
+                `  select -- n.nspname as enum_schema,  
+                     t.typname as enum_name,  
+                     e.enumlabel as enum_value
+              from pg_type t 
+                 join pg_enum e on t.oid = e.enumtypid  
+                 join pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+
+                 where t.typname = 'status'
+
+                `
+                */
+
+              }
+              
+
               const column: Column = this.normalizeColumnSchema(result);
               const relation: TableReference | undefined = relations.filter(
                 (rel: TableReference) => rel.name === column.name,
@@ -141,7 +201,7 @@ export default class PostgresqlHandler extends BaseHandler {
               table.columns.push(column);
             });
 
-            console.log(table);
+            // 
 
             return resolve(table);
           }).catch(reject);
@@ -171,13 +231,13 @@ export default class PostgresqlHandler extends BaseHandler {
             JOIN information_schema.constraint_column_usage AS ccu
               ON ccu.constraint_name = tc.constraint_name
          WHERE constraint_type = 'FOREIGN KEY' AND tc.table_name='${table}';`,
-        (err: Error, relations: RawTableReference[]) => {
+        (err: Error, relations: {rows: PostgresqlRawTableReference[]}) => {
           /* istanbul ignore next */
           if (err) {
             return reject(err);
           }
 
-          const references: TableReference[] = relations.rows.map((relation: RawTableReference) => {
+          const references: TableReference[] = relations.rows.map((relation: PostgresqlRawTableReference) => {
 
             const reference: TableReference = {
               name: relation.column_name,

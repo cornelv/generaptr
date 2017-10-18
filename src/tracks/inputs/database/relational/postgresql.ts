@@ -4,7 +4,6 @@ import * as inquirer from 'inquirer';
 import * as pg from 'pg';
 import config from '../../../../configs/config';
 import { Schema } from '../../../../commons/types';
-import Logger from '../../../../commons/logger';
 
 export const questions: inquirer.Questions = [
   {

@@ -66,5 +66,23 @@ export default {
         database: 'test',
       },
     },
+    POSTGRESQL: {
+      dev: {
+        host: '192.168.99.100',
+        port: 5432,
+        user: 'root',
+        password: 'secret',
+        database: 'test',
+      },
+      test: {
+        host: '127.0.0.1',
+        port: 5432,
+        user: 'tpg',
+        password: 'tpg',
+        database: 'test',
+      },
+    },
+
+
   },
 };

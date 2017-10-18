@@ -33,7 +33,6 @@ export class SchemaUtil {
    */
   public convertValues(column: Column): Column {
     const columnType: string = column.dataType.rawValues || '';
-
     switch (column.dataType.type) {
       case 'enum':
         column.dataType.values = columnType ?
