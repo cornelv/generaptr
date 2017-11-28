@@ -25,7 +25,7 @@ describe('Suite for testing PostgreSQLHandler class', () => {
     try {
       if (handler) {
         handler.getTables().then((tableNames: string[]) => {
-          assert.equal(tableNames.length, 5);
+          assert.equal(tableNames.length, 6);
           done();
         }).catch((err: Error) => {
           console.log(err);
@@ -87,7 +87,8 @@ describe('Suite for testing PostgreSQLHandler class', () => {
     try {
       if (handler) {
         handler.readSchema().then((schema: Schema) => {
-          assert.equal(schema.length, 4);
+
+          assert.equal(schema.length, 5);
 
           const users: Table = schema.filter((table: Table) => table.name === 'users')[0];
           const accounts: Table = schema.filter((table: Table) => table.name === 'accounts')[0];

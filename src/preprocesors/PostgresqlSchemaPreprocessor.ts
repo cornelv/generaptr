@@ -25,10 +25,6 @@ export default class PostgresqlSchemaPreprocessor {
    */
   public convertToStandardSchema(columnSchema: PostgreSqlColumnSchema): Column {
 
-    if(columnSchema.column_name == 'status') {
-      console.log(columnSchema);
-    }
-
     const column: Column = {
       name: columnSchema.column_name ? columnSchema.column_name : '',
       

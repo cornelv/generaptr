@@ -67,6 +67,8 @@ export default class PostgresqlHandler extends BaseHandler {
         Promise.all(tables).then((schema: Schema) => {
           resolve(this.normalizeRelations(schema));
         }).catch(reject);
+
+
       }).catch(reject);
     });
   }
@@ -92,6 +94,74 @@ export default class PostgresqlHandler extends BaseHandler {
         },
       );
     });
+  }
+
+
+  public async getEnumColumnData(tableName: String, result: PostgreSqlColumnSchema, relations: TableReference[]): Promise<{result, relations}>{
+
+      return new Promise<{result, relations}>( (resolve, reject) => {
+
+          this.connection.query(
+            `SELECT
+             a.attname as "Column",
+             pg_catalog.format_type(a.atttypid, a.atttypmod) as "Datatype"
+            FROM
+            pg_catalog.pg_attribute a
+            WHERE
+            a.attnum > 0
+            AND NOT a.attisdropped
+            AND a.attrelid = (
+                SELECT c.oid
+                FROM pg_catalog.pg_class c
+              LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                WHERE c.relname = '${tableName}' AND a.attname = '${result.column_name}' and 
+                 pg_catalog.pg_table_is_visible(c.oid)
+            ) LIMIT 1;`)
+           .then( (results: {rows: [{}]}) => {
+
+              const promises: Promise<{result, relations}>[] = []
+
+              // do we really need a for each here ?
+              results.rows.forEach((column_details: {Datatype: String}) => {
+
+                // make a query to get the enum options
+                promises.push( this.connection.query(`
+                  select 
+                     t.typname as enum_name,  
+                     e.enumlabel as enum_value
+                  from pg_type t 
+                  join pg_enum e on t.oid = e.enumtypid  
+                  join pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+
+                   where t.typname = '${column_details.Datatype}'
+                 `).then( (enum_values: {rows: [{}]}) => {
+
+                   result.data_type = 'enum';
+                   result.column_type = enum_values.rows.map((curr_value: {enum_value: String}) => {
+                     return curr_value.enum_value;
+                   }).join(',');
+
+                   result.column_type = "enum("+ result.column_type +")";
+
+                   return Promise.resolve({result, relations}); 
+
+                 }).catch(reject) );
+
+              });
+
+              return Promise.all(promises);
+            })
+           .then((data) => {
+
+                if(data.length < 1){
+                  resolve({result: {}, relations: {}});
+                  return;
+                }
+
+               resolve(data[0]);
+           })
+            .catch(reject);
+      });
   }
 
   /**
@@ -134,59 +204,26 @@ export default class PostgresqlHandler extends BaseHandler {
             return reject(err);
           }
 
+
           this.getRelationsForTable(tableName).then((relations: TableReference[]) => {
 
-            columns.rows.forEach((result: PostgreSqlColumnSchema) => {
+             const promises: Promise<{result, relations}>[] = []
 
-              if(result.data_type == 'USER-DEFINED') {
+             columns.rows.forEach((result: PostgreSqlColumnSchema) => {
 
+                if(result.data_type == 'USER-DEFINED') {
+                  promises.push( this.getEnumColumnData(tableName, result, relations) );
+                }
+                else {  
+                  promises.push(Promise.resolve({result, relations})); 
+                }                     
+             });
+             return Promise.all(promises); 
+          })
+          .then((processed_columns) => {
 
-
-                console.log(tableName);
-                console.log(result);
-                
-                // check if we found an enum column
-
-                // make a query to get the column type from pg_catalog
-
-                /*
-                `
-                SELECT
-                   a.attname as "Column",
-                   pg_catalog.format_type(a.atttypid, a.atttypmod) as "Datatype"
-
-
-                  FROM
-                  pg_catalog.pg_attribute a
-                  WHERE
-                  a.attnum > 0
-                  AND NOT a.attisdropped
-                  AND a.attrelid = (
-                      SELECT c.oid
-                      FROM pg_catalog.pg_class c
-                    LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-                      WHERE c.relname = 'test_status' AND a.attname = 'status' and 
-                       pg_catalog.pg_table_is_visible(c.oid)
-                  );
-
-                `
-
-                // make a query to get the enum values
-
-                `  select -- n.nspname as enum_schema,  
-                     t.typname as enum_name,  
-                     e.enumlabel as enum_value
-              from pg_type t 
-                 join pg_enum e on t.oid = e.enumtypid  
-                 join pg_catalog.pg_namespace n ON n.oid = t.typnamespace
-
-                 where t.typname = 'status'
-
-                `
-                */
-
-              }
-              
+            // for each column, create the table data :)
+            processed_columns.forEach( ({result, relations}) => {
 
               const column: Column = this.normalizeColumnSchema(result);
               const relation: TableReference | undefined = relations.filter(
@@ -201,12 +238,17 @@ export default class PostgresqlHandler extends BaseHandler {
               table.columns.push(column);
             });
 
-            // 
+            return Promise.resolve();
 
+          })
+          .then( () => {
             return resolve(table);
-          }).catch(reject);
+            }).catch(reject);
         },
       );
+
+
+      // 
     });
   }
 
